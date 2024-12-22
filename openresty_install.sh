@@ -3,7 +3,11 @@
 # OpenResty Build
 # xujpxm@gmail.com
 
-echo "`date` ### start OpenResty build script..."
+function get_now(){
+    date +"%Y-%m-%d %H:%M:%S"
+}
+
+echo "$(get_now) ### start OpenResty build script..."
 # 基础版本信息
 src_home=$(pwd)
 build_home=$(pwd)/build
@@ -16,12 +20,15 @@ upstream_check_patch="1.20.1+"
 openssl="1.1.1k"
 pcre="8.45"
 
+
 function pre_devtools(){
-    echo "`date` ### pre_devtools progress"
+    echo "$(get_now) ### pre_devtools progress"
     yum -y install \
+        patch \
         perl \
         dos2unix \
         openssl-devel \
+		GeoIP-devel \
         gcc \
         gcc-c++ \
         make \
@@ -32,13 +39,13 @@ function pre_devtools(){
         tar \
         wget \
         git 
-    echo "`date` #### nginx user add"
+    echo "$(get_now) #### nginx user add"
     /usr/sbin/groupadd nginx
     /usr/sbin/useradd -g nginx nginx -s /sbin/nologin -M
 }
 
 function pre_build(){
-    echo "`date` ### pre_build progress"
+    echo "$(get_now) ### pre_build progress"
     test -d $build_home && rm -rf $build_home 
     mkdir -pv $prefix
     mkdir -pv $build_home 
@@ -47,17 +54,18 @@ function pre_build(){
     curl -fSL https://www.openssl.org/source/openssl-${openssl}.tar.gz -o openssl-${openssl}.tar.gz
     tar -zxvf openssl-${openssl}.tar.gz
     curl -fSL https://sourceforge.net/projects/pcre/files/pcre/${pcre}/pcre-${pcre}.tar.gz/download -o pcre-${pcre}.tar.gz
-    tar -zxvf pcre-${pcre}.tar.gz \
+    tar -zxvf pcre-${pcre}.tar.gz 
     wget -c https://github.com/chobits/ngx_http_proxy_connect_module/archive/refs/tags/v${ngx_proxy_connect}.tar.gz -O ngx_http_proxy_connect_module-${ngx_proxy_connect}.tar.gz
     tar -zxvf ngx_http_proxy_connect_module-${ngx_proxy_connect}.tar.gz 
-    git clone https://github.com/xiaokai-wang/nginx_upstream_check_module.git 
+    git clone https://github.com/yaoweibin/nginx_upstream_check_module.git 
     # openresty下载
     wget -c https://openresty.org/download/openresty-${resty_version}.tar.gz 
     tar -zxvf openresty-${resty_version}.tar.gz 
+    ls -lh $build_home/*.tar.gz
 }
 
 function do_patch(){
-    echo "`date` ### do_patch progress"
+    echo "$(get_now) ### do_patch progress"
     cd $build_home
     cd openresty-${resty_version}/bundle/nginx-$ngx_version
 
@@ -99,7 +107,7 @@ resty_config_deps="\
     "
 
 function config_nginx(){
-    echo "$(date) ### config openresty progress with config: $resty_config_options $resty_config_deps"
+    echo "$(get_now) ### config openresty progress with config: $resty_config_options $resty_config_deps"
     cd $build_home/openresty-${resty_version}
     ./configure ${resty_config_options} ${resty_config_deps} 
 }
@@ -108,10 +116,9 @@ function config_process(){
     pre_devtools
     pre_build
     do_patch
-    pre_config_nginx
     config_nginx
 }
 
 config_process $@
-echo "$(date) ### make && make install..."
+echo "$(get_now) ### make && make install..."
 make && make install && echo $? && echo "OpenResty build Successful!"
